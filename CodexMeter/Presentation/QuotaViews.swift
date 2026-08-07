@@ -11,8 +11,10 @@ struct QuotaContentView: View {
     @StateObject private var settings = AppSettings()
     @AppStorage("appTheme") private var appTheme = AppTheme.dark.rawValue
     @AppStorage("panelBackgroundOpacity") private var panelBackgroundOpacity = 0.52
+    @AppStorage("appLanguage") private var appLanguage = AppLanguage.chinese.rawValue
     @State private var showDisconnectedAlert = false
     @State private var detailCard: DetailCard = .quota
+    @State private var previousDetailCard: DetailCard = .quota
     @State private var pageOpacity = 1.0
     @State private var pageOffset: CGFloat = 0
     @State private var isPageTransitioning = false
@@ -43,11 +45,11 @@ struct QuotaContentView: View {
             DispatchQueue.main.async { PanelController.shared.resizeToFit(animated: true) }
         }
         .onExitCommand { PanelController.shared.hide() }
-        .alert("Codex app-server 未连接", isPresented: $showDisconnectedAlert) {
-            Button("重试连接") { model.refresh() }
-            Button("取消", role: .cancel) { }
+        .alert(appText("Codex app-server 未连接", "Codex app-server disconnected"), isPresented: $showDisconnectedAlert) {
+            Button(appText("重试连接", "Reconnect")) { model.refresh() }
+            Button(appText("取消", "Cancel"), role: .cancel) { }
         } message: {
-            Text("当前无法刷新额度，请检查 Codex 是否可用后重试。")
+            Text(appText("当前无法刷新额度，请检查 Codex 是否可用后重试。", "Quota refresh is unavailable. Check Codex and try again."))
         }
     }
     private var header: some View {
@@ -60,15 +62,12 @@ struct QuotaContentView: View {
                 .shadow(color: .blue.opacity(0.35), radius: 8, y: 4)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Codex Meter").font(.title3.bold())
-                HStack(spacing: 5) {
-                    Text("额度概览")
-                    if let updatedAt = snapshot?.fetchedAt {
-                        Text("·")
-                        Text("更新于 \(updatedAt.formatted(date: .omitted, time: .shortened))")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(panelSecondary)
+                Text(verbatim: appText("额度概览 · 更新于", "Quota · Updated") + (snapshot.map { " \($0.fetchedAt.formatted(date: .omitted, time: .shortened))" } ?? ""))
+                    .font(.caption)
+                    .foregroundStyle(panelSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .accessibilityLabel(snapshot.map { appText("额度概览，更新于 \($0.fetchedAt.formatted(date: .omitted, time: .shortened))", "Quota overview, updated at \($0.fetchedAt.formatted(date: .omitted, time: .shortened))") } ?? appText("额度概览", "Quota overview"))
             }
             Spacer()
             if let plan = snapshot?.planType {
@@ -85,19 +84,20 @@ struct QuotaContentView: View {
                     Circle().fill(.primary.opacity(0.055))
                     Circle().stroke(.primary.opacity(0.08))
                     Image(systemName: "arrow.clockwise")
-                        .symbolEffect(.pulse, options: .repeating, isActive: model.isRefreshing)
+                        .rotationEffect(.degrees(model.isRefreshing ? 360 : 0))
+                        .animation(model.isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .linear(duration: 0), value: model.isRefreshing)
                 }
                 .frame(width: 32, height: 32)
                 .contentShape(Circle())
             }
             .buttonStyle(.plain).foregroundStyle(.blue)
             .disabled(model.isRefreshing)
-            .help("立即刷新")
-            Button { setDetailCard(.settings) } label: { Image(systemName: "gearshape").frame(width: 32, height: 32) }
-                .buttonStyle(.plain).foregroundStyle(panelPrimary)
+            .help(appText("立即刷新", "Refresh now"))
+            Button(action: toggleSettings) { Image(systemName: detailCard == .settings ? "arrow.uturn.backward" : "gearshape").frame(width: 32, height: 32) }
+                .buttonStyle(.plain).foregroundStyle(detailCard == .settings ? .blue : panelPrimary)
                 .background(.primary.opacity(0.055), in: Circle())
                 .overlay { Circle().stroke(.primary.opacity(0.08)) }
-                .help("设置")
+                .help(detailCard == .settings ? appText("返回上一页", "Back") : appText("设置", "Settings"))
         }
     }
     private var snapshot: CodexQuotaSnapshot? {
@@ -108,7 +108,7 @@ struct QuotaContentView: View {
     }
     @ViewBuilder private var content: some View {
         if detailCard == .settings {
-            SettingsCard(settings: settings, close: { setDetailCard(.quota) }) { interval, enabled in
+            SettingsCard(settings: settings) { interval, enabled in
                 model.configureAutoRefresh(interval, enabled: enabled)
             }
             .opacity(pageOpacity)
@@ -117,32 +117,32 @@ struct QuotaContentView: View {
         } else {
         switch model.state {
         case .loaded(let snapshot): quota(snapshot)
-        case .stale(let snapshot, let error): VStack(alignment: .leading, spacing: 12) { quota(snapshot); Label("额度更新失败：\(error)", systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
-        case .loading: HStack { Spacer(); ProgressView("正在连接 Codex…"); Spacer() }.padding(.vertical, 28)
-        case .codexNotInstalled: error("未找到 Codex CLI", "请安装 Codex CLI，或在设置中选择 codex 可执行文件。")
-        case .notLoggedIn: error("Codex 尚未登录 ChatGPT", "请先在终端运行 codex 并完成登录。")
-        case .unsupportedAuthMode: error("当前 Codex 使用 API Key", "ChatGPT 5 小时和周额度不适用于当前认证模式。")
-        case .disconnected(let message): error("Codex app-server 已断开", "正在尝试重新连接。\n\(message)")
+        case .stale(let snapshot, let error): VStack(alignment: .leading, spacing: 12) { quota(snapshot); Label(appText("额度更新失败：", "Quota update failed: ") + error, systemImage: "exclamationmark.triangle.fill").font(.caption).foregroundStyle(.orange) }
+        case .loading: HStack { Spacer(); ProgressView(appText("正在连接 Codex…", "Connecting to Codex…")); Spacer() }.padding(.vertical, 28)
+        case .codexNotInstalled: error(appText("未找到 Codex CLI", "Codex CLI not found"), appText("请安装 Codex CLI，或在设置中选择 codex 可执行文件。", "Install Codex CLI or choose its executable in Settings."))
+        case .notLoggedIn: error(appText("Codex 尚未登录 ChatGPT", "Codex is not logged in"), appText("请先在终端运行 codex 并完成登录。", "Run codex in Terminal and complete sign-in first."))
+        case .unsupportedAuthMode: error(appText("当前 Codex 使用 API Key", "Codex uses an API key"), appText("ChatGPT 5 小时和周额度不适用于当前认证模式。", "ChatGPT quota windows do not apply to this authentication mode."))
+        case .disconnected(let message): error(appText("Codex app-server 已断开", "Codex app-server disconnected"), appText("正在尝试重新连接。", "Reconnecting.") + "\n\(message)")
         }
         }
     }
     private func quota(_ snapshot: CodexQuotaSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let fiveHour = snapshot.fiveHour { QuotaRow(title: "5 小时额度", window: fiveHour, now: model.now) }
+            if let fiveHour = snapshot.fiveHour { QuotaRow(title: appText("5 小时额度", "5-hour quota"), window: fiveHour, now: model.now) }
             if let weekly = snapshot.weekly {
                 detailCardView(window: weekly, usage: snapshot.tokenUsage)
                     .opacity(pageOpacity)
                     .offset(x: pageOffset)
                     .allowsHitTesting(!isPageTransitioning)
             }
-            if snapshot.fiveHour == nil && snapshot.weekly == nil { Text("暂无可识别的额度窗口").foregroundStyle(panelSecondary) }
+            if snapshot.fiveHour == nil && snapshot.weekly == nil { Text(appText("暂无可识别的额度窗口", "No recognized quota window")).foregroundStyle(panelSecondary) }
         }
     }
     private func error(_ title: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: "exclamationmark.circle.fill").font(.headline).foregroundStyle(.orange)
             Text(detail).font(.subheadline).foregroundStyle(panelSecondary).fixedSize(horizontal: false, vertical: true)
-            Button { model.refresh() } label: { Label("重试", systemImage: "arrow.clockwise") }.buttonStyle(.borderedProminent)
+            Button { model.refresh() } label: { Label(appText("重试", "Retry"), systemImage: "arrow.clockwise") }.buttonStyle(.borderedProminent)
         }
         .padding(16).background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
@@ -177,49 +177,82 @@ struct QuotaContentView: View {
             }
         }
     }
+    private func toggleSettings() {
+        if detailCard == .settings {
+            setDetailCard(previousDetailCard)
+        } else {
+            previousDetailCard = detailCard
+            setDetailCard(.settings)
+        }
+    }
 }
 
 private enum DetailCard: Equatable { case quota, history, settings }
 
 private struct SettingsCard: View {
     @ObservedObject var settings: AppSettings
-    let close: () -> Void
     let configureAutoRefresh: (RefreshInterval, Bool) -> Void
     @AppStorage("appTheme") private var appTheme = AppTheme.dark.rawValue
     @AppStorage("panelBackgroundOpacity") private var panelBackgroundOpacity = 0.52
+    @AppStorage("appLanguage") private var appLanguage = AppLanguage.chinese.rawValue
+
+    private let labelWidth: CGFloat = 82
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("设置", systemImage: "gearshape").font(.title3.bold())
+                Label(appText("设置", "Settings"), systemImage: "gearshape").font(.title3.bold())
                 Spacer()
-                Button(action: close) {
-                    Image(systemName: "arrow.uturn.backward")
-                        .frame(width: 28, height: 28)
-                        .background(.primary.opacity(0.055), in: Circle())
+                Picker("", selection: $appLanguage) {
+                    Text("中").tag(AppLanguage.chinese.rawValue)
+                    Text("EN").tag(AppLanguage.english.rawValue)
                 }
-                .buttonStyle(.plain).help("返回周额度")
+                .labelsHidden().pickerStyle(.segmented).frame(width: 82)
             }
-            Picker("主题", selection: $appTheme) {
-                ForEach(AppTheme.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-            }
-            .pickerStyle(.segmented)
             HStack(spacing: 8) {
-                Text("背景 \(Int(panelBackgroundOpacity * 100))%").font(.caption).foregroundStyle(panelSecondary)
-                Slider(value: $panelBackgroundOpacity, in: 0.15...0.9, step: 0.05).labelsHidden()
+                Text(appText("主题", "Theme"))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(panelSecondary)
+                    .frame(width: labelWidth, alignment: .leading)
+                Picker("", selection: $appTheme) {
+                    ForEach(AppTheme.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                }
+                .labelsHidden().pickerStyle(.segmented)
+                .accessibilityLabel(appText("主题", "Theme"))
+            }
+            HStack(spacing: 8) {
+                Text(verbatim: appText("背景", "Opacity") + " \(Int(panelBackgroundOpacity * 100))%")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(panelSecondary)
+                    .frame(width: labelWidth, alignment: .leading)
+                    .help(appText("背景透明度", "Background opacity"))
+                Slider(value: $panelBackgroundOpacity, in: 0.15...0.9, step: 0.05)
+                    .labelsHidden()
+                    .accessibilityLabel(appText("背景透明度", "Background opacity"))
             }
             HStack(spacing: 10) {
-                Toggle("自动刷新", isOn: $settings.autoRefresh)
-                    .toggleStyle(.switch).tint(settings.autoRefresh ? .green : .gray).font(.caption)
-                Picker("刷新间隔", selection: $settings.refreshInterval) {
-                    ForEach(RefreshInterval.allCases, id: \.self) { Text($0 == .manual ? "仅手动" : "\($0.rawValue) 秒").tag($0) }
+                Text(appText("自动刷新", "Auto Refresh"))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(panelSecondary)
+                    .frame(width: labelWidth, alignment: .leading)
+                    .help(appText("自动刷新", "Auto refresh"))
+                Toggle("", isOn: $settings.autoRefresh)
+                    .labelsHidden().toggleStyle(.switch).tint(settings.autoRefresh ? .green : .gray)
+                    .accessibilityLabel(appText("自动刷新", "Auto refresh"))
+                Picker(appText("刷新间隔", "Interval"), selection: $settings.refreshInterval) {
+                    ForEach(RefreshInterval.allCases, id: \.self) { Text($0 == .manual ? appText("仅手动", "Manual") : "\($0.rawValue) \(appText("秒", "sec"))").tag($0) }
                 }
                 .labelsHidden().frame(maxWidth: .infinity)
                 .disabled(!settings.autoRefresh).opacity(settings.autoRefresh ? 1 : 0.45)
             }
             HStack(spacing: 8) {
-                Text("Codex 路径").font(.caption).foregroundStyle(panelSecondary).fixedSize()
-                TextField("Codex 路径", text: $settings.customCodexPath).textFieldStyle(.roundedBorder)
+                Text(appText("Codex 路径", "Codex Path"))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(panelSecondary)
+                    .frame(width: labelWidth, alignment: .leading)
+                    .help(appText("Codex 路径", "Codex path"))
+                TextField(appText("Codex 路径", "Codex path"), text: $settings.customCodexPath)
+                    .textFieldStyle(.roundedBorder)
             }
         }
         .padding(12)
@@ -255,11 +288,11 @@ private struct WeeklyQuotaCard: View {
                     toggleHistory()
                 }
             } else {
-                QuotaRow(title: "周额度", window: window, now: now)
+                QuotaRow(title: appText("周额度", "Weekly quota"), window: window, now: now)
                     .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .onTapGesture { toggleHistory() }
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityLabel("周额度，点击查看历史用量")
+                    .accessibilityLabel(appText("周额度，点击查看历史用量", "Weekly quota, show usage history"))
             }
         }
     }
@@ -280,7 +313,7 @@ private struct TokenHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("历史用量", systemImage: "chart.xyaxis.line").font(.headline)
+                Label(appText("历史用量", "Usage history"), systemImage: "chart.xyaxis.line").font(.headline)
                 Spacer()
                 Button(action: close) {
                     Image(systemName: "arrow.uturn.backward")
@@ -288,21 +321,21 @@ private struct TokenHistoryView: View {
                         .background(.primary.opacity(0.055), in: Circle())
                         .contentShape(Circle())
                 }
-                .buttonStyle(.plain).help("返回周额度")
+                .buttonStyle(.plain).help(appText("返回周额度", "Back to weekly quota"))
             }
             if let summary = usage?.summary {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
-                    metric("累计Token", compact(summary.lifetimeTokens), "sum")
-                    metric("单日峰值", compact(summary.peakDailyTokens), "waveform.path.ecg")
-                    metric("最长聊天", duration(summary.longestRunningTurnSec), "timer")
-                    metric("当前连续", days(summary.currentStreakDays), "flame")
-                    metric("最长连续", days(summary.longestStreakDays), "trophy")
+                    metric(appText("累计Token", "Total tokens"), compact(summary.lifetimeTokens), "sum")
+                    metric(appText("单日峰值", "Daily peak"), compact(summary.peakDailyTokens), "waveform.path.ecg")
+                    metric(appText("最长聊天", "Longest chat"), duration(summary.longestRunningTurnSec), "timer")
+                    metric(appText("当前连续", "Current streak"), days(summary.currentStreakDays), "flame")
+                    metric(appText("最长连续", "Longest streak"), days(summary.longestStreakDays), "trophy")
                 }
 
                 HStack(spacing: 2) {
-                    periodButton("每日", .daily)
-                    periodButton("每周", .weekly)
-                    periodButton("累计", .cumulative)
+                    periodButton(appText("每日", "Daily"), .daily)
+                    periodButton(appText("每周", "Weekly"), .weekly)
+                    periodButton(appText("累计", "Total"), .cumulative)
                 }
                 .padding(2)
                 .background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -370,7 +403,7 @@ private struct TokenHistoryView: View {
                 Text(periodHint).font(.caption2).foregroundStyle(panelTertiary)
                     .frame(maxWidth: .infinity, alignment: .center).multilineTextAlignment(.center)
             } else {
-                ContentUnavailableView("暂无历史用量", systemImage: "chart.bar.xaxis", description: Text("刷新后仍无数据时，表示当前账号暂未返回 Token 活动。"))
+                ContentUnavailableView(appText("暂无历史用量", "No usage history"), systemImage: "chart.bar.xaxis", description: Text(appText("刷新后仍无数据时，表示当前账号暂未返回 Token 活动。", "No Token activity was returned for this account.")))
                     .frame(height: 210)
             }
         }
@@ -385,10 +418,10 @@ private struct TokenHistoryView: View {
         return points.min { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }
     }
     private var periodTitle: String {
-        switch period { case .daily: return "每日Token活动"; case .weekly: return "每周Token活动"; case .cumulative: return "累计趋势" }
+        switch period { case .daily: return appText("每日Token活动", "Daily Token activity"); case .weekly: return appText("每周Token活动", "Weekly Token activity"); case .cumulative: return appText("累计趋势", "Cumulative trend") }
     }
     private var periodHint: String {
-        switch period { case .daily: return "每根柱代表1天，点击图表可查看日期与用量"; case .weekly: return "每根柱代表1个自然周"; case .cumulative: return "折线表示历史记录累计到该日期的 Token 数" }
+        switch period { case .daily: return appText("每根柱代表1天，点击图表可查看日期与用量", "Each bar represents one day. Click the chart for details."); case .weekly: return appText("每根柱代表1个自然周", "Each bar represents one calendar week."); case .cumulative: return appText("折线表示历史记录累计到该日期的 Token 数", "The line is cumulative Tokens through each date.") }
     }
     private func dateLabel(_ date: Date) -> String {
         let value = date.formatted(.dateTime.month().day())
@@ -494,9 +527,9 @@ private struct QuotaRow: View {
                         Text("\(window.remainingPercent, specifier: "%.0f")%")
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .foregroundStyle(progressColor)
-                        Text("剩余").font(.subheadline).foregroundStyle(panelSecondary)
+                        Text(appText("剩余", "remaining")).font(.subheadline).foregroundStyle(panelSecondary)
                     }
-                    Text("已用 \(window.usedPercent, specifier: "%.0f")%")
+                    Text(verbatim: appText("已用", "Used") + " " + String(format: "%.0f", window.usedPercent) + "%")
                         .font(.subheadline).foregroundStyle(panelSecondary)
                 }
                 Spacer()
@@ -512,9 +545,9 @@ private struct QuotaRow: View {
             .frame(height: 8)
             Divider().opacity(0.7)
             HStack(spacing: 14) {
-                metric(icon: "clock", color: .blue, title: "重置于", value: window.resetsAt.formatted(date: .numeric, time: .shortened))
+                metric(icon: "clock", color: .blue, title: appText("重置于", "Resets"), value: window.resetsAt.formatted(date: .numeric, time: .shortened))
                 Divider().frame(height: 34)
-                metric(icon: "hourglass", color: .purple, title: "剩余时间", value: countdown(window.resetsAt.timeIntervalSince(now)))
+                metric(icon: "hourglass", color: .purple, title: appText("剩余时间", "Time left"), value: countdown(window.resetsAt.timeIntervalSince(now)))
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
@@ -533,9 +566,9 @@ private struct QuotaRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     private func countdown(_ interval: TimeInterval) -> String {
-        guard interval > 0 else { return "即将重置" }
+        guard interval > 0 else { return appText("即将重置", "Resetting soon") }
         let seconds = Int(interval), days = seconds / 86_400, hours = seconds / 3_600 % 24, minutes = seconds / 60 % 60
-        return days > 0 ? "\(days)天\(hours)小时\(minutes)分" : "\(hours)小时\(minutes)分"
+        return days > 0 ? appText("\(days)天\(hours)小时\(minutes)分", "\(days)d \(hours)h \(minutes)m") : appText("\(hours)小时\(minutes)分", "\(hours)h \(minutes)m")
     }
 }
 
@@ -549,7 +582,7 @@ private struct UsageRing: View {
                 .stroke(color.gradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             VStack(spacing: 1) {
-                Text("已用").font(.caption2).foregroundStyle(panelSecondary)
+                Text(appText("已用", "Used")).font(.caption2).foregroundStyle(panelSecondary)
                 Text("\(usedPercent, specifier: "%.0f")%").font(.title3.bold())
             }
         }

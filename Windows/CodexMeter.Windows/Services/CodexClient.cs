@@ -24,7 +24,18 @@ public sealed class CodexClient
             await ReadResultAsync(process, 1, cancellationToken);
             await SendNotificationAsync(process, "initialized", cancellationToken);
             await SendAsync<object?>(process, "account/rateLimits/read", 2, null, cancellationToken);
-            return QuotaMapper.FromRateLimits(await ReadResultAsync(process, 2, cancellationToken));
+            var snapshot = QuotaMapper.FromRateLimits(await ReadResultAsync(process, 2, cancellationToken));
+            TokenUsage? usage = null;
+            try
+            {
+                await SendAsync<object?>(process, "account/usage/read", 3, null, cancellationToken);
+                usage = QuotaMapper.FromUsage(await ReadResultAsync(process, 3, cancellationToken));
+            }
+            catch (InvalidOperationException)
+            {
+                // 历史用量不是所有 Codex 版本都支持，额度读取仍可正常显示。
+            }
+            return snapshot with { Usage = usage };
         }
         finally
         {

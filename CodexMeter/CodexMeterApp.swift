@@ -1,10 +1,18 @@
 import AppKit
 import SwiftUI
 
+enum AppLanguage: String, CaseIterable {
+    case chinese = "zh-Hans", english = "en"
+}
+
+func appText(_ chinese: String, _ english: String) -> String {
+    (AppLanguage(rawValue: UserDefaults.standard.string(forKey: "appLanguage") ?? AppLanguage.chinese.rawValue) ?? .chinese) == .english ? english : chinese
+}
+
 enum AppTheme: String, CaseIterable {
     case dark, light
     var colorScheme: ColorScheme { self == .dark ? .dark : .light }
-    var title: String { self == .dark ? "深色" : "浅色" }
+    var title: String { self == .dark ? appText("深色", "Dark") : appText("浅色", "Light") }
 }
 
 @main struct CodexMeterApp: App {
@@ -36,19 +44,19 @@ enum AppTheme: String, CaseIterable {
 private struct MenuBarContent: View {
     @ObservedObject var model: QuotaViewModel
     var body: some View {
-        Button("显示或隐藏浮窗") { PanelController.shared.toggle(model: model) }
-        Button("立即刷新") { model.refresh() }
+        Button(appText("显示或隐藏浮窗", "Show or hide panel")) { PanelController.shared.toggle(model: model) }
+        Button(appText("立即刷新", "Refresh now")) { model.refresh() }
         Divider()
-        Button("关于Codex Meter") { presentAbout() }
-        Button("退出Codex Meter") { NSApplication.shared.terminate(nil) }
+        Button(appText("关于Codex Meter", "About Codex Meter")) { presentAbout() }
+        Button(appText("退出Codex Meter", "Quit Codex Meter")) { NSApplication.shared.terminate(nil) }
         .onAppear { model.start() }
     }
     private func presentAbout() {
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "关于Codex Meter"
-            alert.informativeText = "版权所有来自王成龙制作，绿泡泡：amaowangcl"
-            alert.addButton(withTitle: "确定")
+            alert.messageText = appText("关于Codex Meter", "About Codex Meter")
+            alert.informativeText = appText("版权所有来自王成龙制作，绿泡泡：amaowangcl", "Created by Wang Chenglong · WeChat: amaowangcl")
+            alert.addButton(withTitle: appText("确定", "OK"))
             NSApplication.shared.activate(ignoringOtherApps: true)
             alert.runModal()
         }

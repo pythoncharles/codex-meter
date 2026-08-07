@@ -4,52 +4,112 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Codex Meter">
     <ScrollViewer x:Name="Root" Loaded="Window_Loaded">
-        <StackPanel Spacing="16" Padding="24">
+        <Border Padding="24" Background="{Binding PanelBackground}">
+        <Grid RowSpacing="18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Codex Meter" FontSize="28" FontWeight="SemiBold" />
-                    <TextBlock Text="Windows 额度概览" Opacity="0.7" />
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Border Width="52" Height="52" CornerRadius="16" Background="#0A84FF">
+                        <FontIcon Glyph="&#xE7C3;" FontSize="25" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Text="Codex Meter" FontSize="26" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding HeaderSubtitle}" Opacity="0.68" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button Content="关于Codex Meter" Click="About_Click" />
-                    <Button Content="刷新" Click="Refresh_Click" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding PlanText}" Foreground="#00B7C3" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Button Click="About_Click"><FontIcon Glyph="&#xE946;" /><ToolTipService.ToolTip><ToolTip Content="Codex Meter" /></ToolTipService.ToolTip></Button>
+                    <Button Click="Refresh_Click">
+                        <Grid Width="34" Height="34">
+                            <FontIcon Glyph="&#xE72C;" FontSize="18" Foreground="#0A84FF" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <ProgressRing IsActive="{Binding IsRefreshing}" Width="30" Height="30" />
+                        </Grid>
+                        <ToolTipService.ToolTip><ToolTip Content="{Binding RefreshTip}" /></ToolTipService.ToolTip>
+                    </Button>
+                    <Button Click="Settings_Click">
+                        <FontIcon Glyph="{Binding SettingsGlyph}" FontSize="18" Foreground="#0A84FF" />
+                        <ToolTipService.ToolTip><ToolTip Content="{Binding SettingsTip}" /></ToolTipService.ToolTip>
+                    </Button>
                 </StackPanel>
             </Grid>
 
-            <InfoBar IsOpen="True" Severity="Informational" Title="{Binding StatusText}" IsClosable="False" />
+            <InfoBar Grid.Row="1" IsOpen="True" Severity="Informational" Title="{Binding StatusText}" IsClosable="False" />
 
-            <Grid ColumnSpacing="12" RowSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Border Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="5 小时额度" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FiveHourRemaining}" FontSize="40" FontWeight="Bold" />
-                        <ProgressBar Value="{Binding FiveHourRemainingValue}" Maximum="100" />
-                        <TextBlock Text="{Binding FiveHourDetail}" Opacity="0.7" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="1" Padding="16" CornerRadius="12" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="周额度" FontSize="18" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding WeeklyRemaining}" FontSize="40" FontWeight="Bold" />
-                        <ProgressBar Value="{Binding WeeklyRemainingValue}" Maximum="100" />
-                        <TextBlock Text="{Binding WeeklyDetail}" Opacity="0.7" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-            </Grid>
+            <StackPanel Grid.Row="2" Spacing="14">
+                <StackPanel x:Name="QuotaPage" Spacing="14">
+                    <Border Padding="18" CornerRadius="16" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <StackPanel Spacing="9">
+                            <TextBlock Text="{Binding FiveHourTitle}" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding FiveHourRemaining}" FontSize="40" FontWeight="SemiBold" />
+                            <ProgressBar Value="{Binding FiveHourRemainingValue}" Maximum="100" />
+                            <TextBlock Text="{Binding FiveHourDetail}" Opacity="0.7" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Button Click="Weekly_Click" HorizontalContentAlignment="Stretch">
+                        <Border Padding="18" CornerRadius="16" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                            <StackPanel Spacing="9">
+                                <TextBlock Text="{Binding WeeklyTitle}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding WeeklyRemaining}" FontSize="40" FontWeight="SemiBold" />
+                                <ProgressBar Value="{Binding WeeklyRemainingValue}" Maximum="100" />
+                                <TextBlock Text="{Binding WeeklyDetail}" Opacity="0.7" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </Button>
+                </StackPanel>
 
-            <StackPanel Spacing="6">
-                <TextBlock Text="Codex 路径" FontWeight="SemiBold" />
-                <TextBox Text="{Binding CodexPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" LostFocus="CodexPath_LostFocus" PlaceholderText="首次刷新时自动定位；也可手动填写 codex.exe 路径" />
-                <TextBlock Text="手动修改会保存，并在下一次刷新时优先使用。" Opacity="0.7" TextWrapping="Wrap" />
+                <StackPanel x:Name="HistoryPage" Visibility="Collapsed" Spacing="12">
+                    <Grid>
+                        <TextBlock Text="{Binding HistoryTitle}" FontSize="20" FontWeight="SemiBold" />
+                        <Button HorizontalAlignment="Right" Click="HistoryBack_Click"><FontIcon Glyph="&#xE72B;" /></Button>
+                    </Grid>
+                    <Grid ColumnSpacing="8" RowSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <StackPanel><TextBlock x:Name="TotalTokensLabel" Opacity="0.65" /><TextBlock Text="{Binding LifetimeTokens}" FontSize="18" FontWeight="SemiBold" /></StackPanel>
+                        <StackPanel Grid.Column="1"><TextBlock x:Name="DailyPeakLabel" Opacity="0.65" /><TextBlock Text="{Binding PeakDailyTokens}" FontSize="18" FontWeight="SemiBold" /></StackPanel>
+                        <StackPanel Grid.Row="1"><TextBlock x:Name="CurrentStreakLabel" Opacity="0.65" /><TextBlock Text="{Binding CurrentStreak}" FontSize="18" FontWeight="SemiBold" /></StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1"><TextBlock x:Name="LongestStreakLabel" Opacity="0.65" /><TextBlock Text="{Binding LongestStreak}" FontSize="18" FontWeight="SemiBold" /></StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button x:Name="DailyButton" Click="HistoryPeriod_Click" Tag="Daily" />
+                        <Button x:Name="WeeklyPeriodButton" Click="HistoryPeriod_Click" Tag="Weekly" />
+                        <Button x:Name="CumulativeButton" Click="HistoryPeriod_Click" Tag="Cumulative" />
+                    </StackPanel>
+                    <ListView ItemsSource="{Binding UsageRows}" MaxHeight="260">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="8,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Text="{Binding Date}" Opacity="0.7" /><TextBlock Grid.Column="1" Text="{Binding Tokens}" FontWeight="SemiBold" /></Grid></Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock x:Name="NoHistoryText" Text="{Binding NoHistoryText}" HorizontalAlignment="Center" Opacity="0.7" />
+                </StackPanel>
+
+                <StackPanel x:Name="SettingsPage" Visibility="Collapsed" Spacing="14">
+                    <Grid>
+                        <TextBlock Text="{Binding SettingsTitle}" FontSize="20" FontWeight="SemiBold" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="4">
+                            <ToggleButton x:Name="ChineseButton" Content="中" Click="Chinese_Click" />
+                            <ToggleButton x:Name="EnglishButton" Content="EN" Click="English_Click" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding ThemeLabel}" VerticalAlignment="Center" /><ComboBox x:Name="ThemePicker" Grid.Column="1" SelectionChanged="Theme_SelectionChanged"><ComboBoxItem x:Name="DarkThemeItem" /><ComboBoxItem x:Name="LightThemeItem" /></ComboBox></Grid>
+                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding BackgroundOpacityText}" VerticalAlignment="Center" /><Slider Grid.Column="1" Value="{Binding BackgroundOpacity, Mode=TwoWay}" Minimum="0.15" Maximum="0.9" StepFrequency="0.05" /></Grid>
+                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding AutoRefreshLabel}" VerticalAlignment="Center" /><ToggleSwitch Grid.Column="1" IsOn="{Binding AutoRefresh, Mode=TwoWay}" /><ComboBox x:Name="RefreshPicker" Grid.Column="2" SelectionChanged="RefreshInterval_SelectionChanged"><ComboBoxItem Tag="30" /><ComboBoxItem Tag="60" /><ComboBoxItem Tag="120" /><ComboBoxItem Tag="300" /><ComboBoxItem Tag="360" /><ComboBoxItem Tag="600" /><ComboBoxItem Tag="900" /><ComboBoxItem Tag="0" /></ComboBox></Grid>
+                    <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding CodexPathLabel}" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding CodexPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" LostFocus="CodexPath_LostFocus" /></Grid>
+                </StackPanel>
             </StackPanel>
-        </StackPanel>
+        </Grid>
+        </Border>
     </ScrollViewer>
 </Window>

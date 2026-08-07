@@ -36,4 +36,33 @@ public static class QuotaMapper
         }
         return new QuotaSnapshot(fiveHour, weekly, planType);
     }
+
+    public static TokenUsage FromUsage(JsonElement result)
+    {
+        TokenUsageSummary? summary = null;
+        if (result.TryGetProperty("summary", out var summaryValue) && summaryValue.ValueKind == JsonValueKind.Object)
+        {
+            summary = new TokenUsageSummary(
+                ReadInt64(summaryValue, "lifetimeTokens"),
+                ReadInt64(summaryValue, "peakDailyTokens"),
+                ReadInt64(summaryValue, "longestRunningTurnSec"),
+                ReadInt64(summaryValue, "currentStreakDays"),
+                ReadInt64(summaryValue, "longestStreakDays"));
+        }
+
+        var buckets = new List<TokenUsageBucket>();
+        if (result.TryGetProperty("dailyUsageBuckets", out var values) && values.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var value in values.EnumerateArray())
+            {
+                if (!value.TryGetProperty("startDate", out var dateValue) || !DateOnly.TryParse(dateValue.GetString(), out var date)) continue;
+                if (ReadInt64(value, "tokens") is not { } tokens) continue;
+                buckets.Add(new TokenUsageBucket(date, tokens));
+            }
+        }
+        return new TokenUsage(summary, buckets);
+    }
+
+    private static long? ReadInt64(JsonElement value, string property) =>
+        value.TryGetProperty(property, out var number) && number.TryGetInt64(out var result) ? result : null;
 }
