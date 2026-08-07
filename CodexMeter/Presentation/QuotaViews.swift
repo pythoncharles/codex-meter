@@ -49,13 +49,13 @@ struct QuotaContentView: View {
                             .rotationEffect(.degrees(model.isRefreshing ? 360 : 0))
                             .animation(model.isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .default, value: model.isRefreshing)
                     }
-                    .frame(width: 34, height: 34)
+                    .frame(width: 32, height: 32)
                     .contentShape(Circle())
                 }
                     .buttonStyle(.plain).foregroundStyle(.blue)
                     .disabled(model.isRefreshing)
                     .help("立即刷新")
-                SettingsLink { Image(systemName: "gearshape").frame(width: 30, height: 30) }
+                SettingsLink { Image(systemName: "gearshape").frame(width: 32, height: 32) }
                     .buttonStyle(.plain).foregroundStyle(panelPrimary)
                     .background(.primary.opacity(0.055), in: Circle())
                     .overlay { Circle().stroke(.primary.opacity(0.08)) }
@@ -133,24 +133,19 @@ private struct WeeklyQuotaCard: View {
         ZStack {
             if showsHistory {
                 TokenHistoryView(usage: usage, now: now) {
-                    withAnimation(.easeInOut(duration: 0.45)) { showsHistory = false }
+                    withAnimation(.easeInOut(duration: 0.2)) { showsHistory = false }
                 }
-                .transition(.modifier(active: HorizontalFlip(scale: 0.01), identity: HorizontalFlip(scale: 1)))
+                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             } else {
                 QuotaRow(title: "周额度", window: window, now: now)
                     .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .onTapGesture { withAnimation(.easeInOut(duration: 0.45)) { showsHistory = true } }
+                    .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { showsHistory = true } }
                     .accessibilityAddTraits(.isButton)
                     .accessibilityLabel("周额度，点击查看历史用量")
-                    .transition(.modifier(active: HorizontalFlip(scale: 0.01), identity: HorizontalFlip(scale: 1)))
+                    .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
         }
     }
-}
-
-private struct HorizontalFlip: ViewModifier {
-    let scale: CGFloat
-    func body(content: Content) -> some View { content.scaleEffect(x: scale, y: 1) }
 }
 
 private struct TokenHistoryView: View {
@@ -203,7 +198,7 @@ private struct TokenHistoryView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("亿").font(.caption2).foregroundStyle(panelSecondary).offset(y: -8).frame(height: 8)
+                    Text("亿").font(.caption2).foregroundStyle(panelSecondary).offset(x: -31, y: -8).frame(width: 28, height: 8)
                     Chart(points) { point in
                     if period == .cumulative {
                         AreaMark(x: .value("日期", point.date), y: .value("Token", Double(point.tokens)))
@@ -234,11 +229,13 @@ private struct TokenHistoryView: View {
                     AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
                         AxisGridLine(stroke: .init(lineWidth: 0.7)).foregroundStyle(.primary.opacity(0.18))
                         if let tokens = value.as(Double.self) {
-                            AxisValueLabel { Text(tokens == 0 ? "0" : String(format: "%.1f", tokens / 100_000_000)).font(.caption2).foregroundStyle(panelSecondary) }
+                            AxisValueLabel { Text(tokens == 0 ? "0" : String(format: "%.1f", tokens / 100_000_000)).font(.caption2).foregroundStyle(panelSecondary).frame(width: 28).offset(x: -31) }
                         }
                     }
                 }
                 .chartXSelection(value: $selectedDate)
+                .contentTransition(.opacity)
+                .background(TrackpadSwipeHandler { offset in setPeriod(period.shifted(by: offset)) })
                     .frame(height: 120)
                 }
                 .padding(.bottom, 4)
@@ -273,8 +270,12 @@ private struct TokenHistoryView: View {
         let calendar = Calendar.current
         return "\(calendar.component(.month, from: date))/\(calendar.component(.day, from: date))"
     }
+    private func setPeriod(_ value: TokenUsagePeriod) {
+        guard period != value else { return }
+        withAnimation(.smooth(duration: 0.24)) { period = value }
+    }
     private func periodButton(_ title: String, _ value: TokenUsagePeriod) -> some View {
-        Button { withAnimation(.easeInOut(duration: 0.18)) { period = value } } label: {
+        Button { setPeriod(value) } label: {
             Text(title).font(.subheadline.bold()).frame(maxWidth: .infinity).frame(height: 27).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -301,6 +302,52 @@ private struct TokenHistoryView: View {
         return hours > 0 ? "\(hours)时\(minutes)分" : "\(minutes)分钟"
     }
     private func days(_ value: Int64?) -> String { value.map { "\($0) 天" } ?? "--" }
+}
+
+private struct TrackpadSwipeHandler: NSViewRepresentable {
+    let onSwipe: (Int) -> Void
+
+    func makeNSView(context: Context) -> SwipeTrackingView {
+        let view = SwipeTrackingView()
+        view.onSwipe = onSwipe
+        return view
+    }
+    func updateNSView(_ view: SwipeTrackingView, context: Context) { view.onSwipe = onSwipe }
+
+    final class SwipeTrackingView: NSView {
+        var onSwipe: ((Int) -> Void)?
+        private var horizontalDelta: CGFloat = 0
+        private var didSwitchPeriod = false
+        private var eventMonitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let eventMonitor { NSEvent.removeMonitor(eventMonitor) }
+            guard window != nil else { eventMonitor = nil; return }
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                self?.handleScroll(event)
+                return event
+            }
+        }
+        deinit {
+            if let eventMonitor { NSEvent.removeMonitor(eventMonitor) }
+        }
+        private func handleScroll(_ event: NSEvent) {
+            guard event.window === window, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+            if !didSwitchPeriod {
+                horizontalDelta += event.scrollingDeltaX
+            }
+            if !didSwitchPeriod && abs(horizontalDelta) >= 30 {
+                onSwipe?(horizontalDelta > 0 ? -1 : 1)
+                horizontalDelta = 0
+                didSwitchPeriod = true
+            }
+            if event.phase == .ended || event.phase == .cancelled {
+                horizontalDelta = 0
+                didSwitchPeriod = false
+            }
+        }
+    }
 }
 
 private struct QuotaRow: View {

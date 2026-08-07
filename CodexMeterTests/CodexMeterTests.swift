@@ -32,4 +32,9 @@ final class CodexMeterTests: XCTestCase {
         XCTAssertEqual(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .cumulative).map(\.tokens), [100, 150])
     }
 
+    func testTokenUsagePeriodSwitchesInBothDirections() {
+        XCTAssertEqual(TokenUsagePeriod.daily.shifted(by: 1), .weekly)
+        XCTAssertEqual(TokenUsagePeriod.daily.shifted(by: -1), .cumulative)
+    }
+
 }

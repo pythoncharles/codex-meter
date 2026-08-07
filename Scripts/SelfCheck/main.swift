@@ -31,6 +31,8 @@ let usageEnd = Calendar(identifier: .iso8601).date(from: DateComponents(year: 20
 assert(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .daily, endingAt: usageEnd, dayCount: 3).map(\.tokens) == [0, 100, 50])
 assert(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .weekly).last?.tokens == 150)
 assert(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .cumulative).map(\.tokens) == [100, 150])
+assert(TokenUsagePeriod.daily.shifted(by: 1) == .weekly)
+assert(TokenUsagePeriod.daily.shifted(by: -1) == .cumulative)
 let located = try CodexBinaryLocator().locate()
 assert(FileManager.default.isExecutableFile(atPath: located.url.path))
 print("JSONL、7 天额度映射、Token 历史聚合、剩余百分比边界：PASS")

@@ -63,7 +63,15 @@ struct AccountTokenUsageResultDTO: Codable, Sendable {
     let dailyUsageBuckets: [AccountTokenUsageDailyBucket]?
 }
 
-enum TokenUsagePeriod: CaseIterable { case daily, weekly, cumulative }
+enum TokenUsagePeriod: CaseIterable {
+    case daily, weekly, cumulative
+
+    func shifted(by offset: Int) -> Self {
+        let periods = Self.allCases
+        guard let index = periods.firstIndex(of: self) else { return self }
+        return periods[(index + offset + periods.count) % periods.count]
+    }
+}
 
 struct TokenUsagePoint: Identifiable, Equatable {
     let date: Date
