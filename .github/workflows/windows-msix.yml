@@ -19,14 +19,15 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Test Windows quota mapping
-        run: dotnet test Windows/CodexMeter.Windows.Tests/CodexMeter.Windows.Tests.csproj --configuration Release
+        run: dotnet test Windows/CodexMeter.Windows.Tests/CodexMeter.Windows.Tests.csproj --configuration Release -p:AppxPackage=false
       - name: Build MSIX
         run: >
-          dotnet build Windows/CodexMeter.Windows/CodexMeter.Windows.csproj
-          --configuration Release
-          -p:Platform=x64
-          -p:GenerateAppxPackageOnBuild=true
-          -p:AppxPackageDir=${{ github.workspace }}\artifacts\
+          msbuild Windows/CodexMeter.Windows/CodexMeter.Windows.csproj
+          /restore
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:GenerateAppxPackageOnBuild=true
+          /p:AppxPackageDir=${{ github.workspace }}\artifacts\
       - name: Upload MSIX
         uses: actions/upload-artifact@v4
         with:
