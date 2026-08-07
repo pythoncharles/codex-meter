@@ -7,7 +7,7 @@ Spec Review: None identified
 Owner: 王成龙
 Last Updated: 2026-08-07
 
-Status: In Development
+Status: Complete
 
 ## Context Reviewed
 
@@ -72,7 +72,7 @@ TDD Planning:
 1. 建立独立 Windows 应用与核心额度查询
    - Outcome: Windows 用户可输入或自动定位 Codex，并显示 5 小时和周额度。
    - Human Review: No (agent-only)
-   - Status: In Progress
+   - Status: Complete
    - Touches: `Windows/CodexMeter.Windows/`
    - Dependencies: None identified
    - Validation: Windows 单元测试与 GitHub Actions 构建日志。
@@ -80,7 +80,7 @@ TDD Planning:
 2. 加入 MSIX 自动构建
    - Outcome: 推送后产生可下载的 Windows `.msix` 工件。
    - Human Review: No (agent-only)
-   - Status: Pending
+   - Status: Complete
    - Touches: `.github/workflows/windows-msix.yml`
    - Dependencies: 切片 1
    - Validation: GitHub Actions 工件和 `msbuild` 打包日志。
@@ -88,7 +88,7 @@ TDD Planning:
 3. 补齐使用文档
    - Outcome: 用户可区分 macOS `.app` 与 Windows `.msix` 的下载和安装方式。
    - Human Review: Yes (HITL)
-   - Status: Pending
+   - Status: Complete
    - Touches: `README.md`
    - Dependencies: 切片 2
    - Validation: 文档链接与实际 CI 产物路径一致。
