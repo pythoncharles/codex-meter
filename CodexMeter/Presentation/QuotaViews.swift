@@ -154,9 +154,11 @@ private struct TokenHistoryView: View {
     let close: () -> Void
     @State private var period: TokenUsagePeriod = .daily
     @State private var selectedDate: Date?
+    @State private var isSwipeLocked = false
 
     private var buckets: [AccountTokenUsageDailyBucket] { usage?.dailyUsageBuckets ?? [] }
     private var points: [TokenUsagePoint] { TokenUsageSeries.points(from: buckets, period: period, endingAt: now) }
+    private var gridDates: [Date] { TokenUsageSeries.gridDates(from: points, period: period) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -173,7 +175,7 @@ private struct TokenHistoryView: View {
             }
             if let summary = usage?.summary {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
-                    metric("累计 Token", compact(summary.lifetimeTokens), "sum")
+                    metric("累计Token", compact(summary.lifetimeTokens), "sum")
                     metric("单日峰值", compact(summary.peakDailyTokens), "waveform.path.ecg")
                     metric("最长聊天", duration(summary.longestRunningTurnSec), "timer")
                     metric("当前连续", days(summary.currentStreakDays), "flame")
@@ -198,7 +200,7 @@ private struct TokenHistoryView: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("亿").font(.caption2).foregroundStyle(panelSecondary).offset(x: -31, y: -8).frame(width: 28, height: 8)
+//                  Text("亿").font(.caption2).foregroundStyle(panelSecondary).offset(y: -10).frame(width: 18, height: 8)
                     Chart(points) { point in
                     if period == .cumulative {
                         AreaMark(x: .value("日期", point.date), y: .value("Token", Double(point.tokens)))
@@ -215,8 +217,10 @@ private struct TokenHistoryView: View {
                     }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 7)) { value in
+                    AxisMarks(values: gridDates) { _ in
                         AxisGridLine(stroke: .init(lineWidth: 0.7)).foregroundStyle(.primary.opacity(0.18))
+                    }
+                    AxisMarks(values: .automatic(desiredCount: 7)) { value in
                         if let date = value.as(Date.self) {
                             AxisValueLabel(anchor: .topTrailing) {
                                 Text(shortDate(date)).font(.caption2).foregroundStyle(panelSecondary).fixedSize()
@@ -229,13 +233,20 @@ private struct TokenHistoryView: View {
                     AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
                         AxisGridLine(stroke: .init(lineWidth: 0.7)).foregroundStyle(.primary.opacity(0.18))
                         if let tokens = value.as(Double.self) {
-                            AxisValueLabel { Text(tokens == 0 ? "0" : String(format: "%.1f", tokens / 100_000_000)).font(.caption2).foregroundStyle(panelSecondary).frame(width: 28).offset(x: -31) }
+                            AxisValueLabel { Text(tokens == 0 ? "0" : String(format: "%.1f", tokens / 100_000_000)).font(.caption2).foregroundStyle(panelSecondary).frame(width: 18) }
                         }
                     }
                 }
                 .chartXSelection(value: $selectedDate)
                 .contentTransition(.opacity)
-                .background(TrackpadSwipeHandler { offset in setPeriod(period.shifted(by: offset)) })
+                .background(TrackpadSwipeHandler(
+                    onSwipe: { offset in
+                        guard !isSwipeLocked else { return }
+                        isSwipeLocked = true
+                        setPeriod(period.shifted(by: offset))
+                    },
+                    onGestureBoundary: { isSwipeLocked = false }
+                ))
                     .frame(height: 120)
                 }
                 .padding(.bottom, 4)
@@ -257,10 +268,10 @@ private struct TokenHistoryView: View {
         return points.min { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }
     }
     private var periodTitle: String {
-        switch period { case .daily: return "每日 Token 活动"; case .weekly: return "每周 Token 活动"; case .cumulative: return "累计趋势" }
+        switch period { case .daily: return "每日Token活动"; case .weekly: return "每周Token活动"; case .cumulative: return "累计趋势" }
     }
     private var periodHint: String {
-        switch period { case .daily: return "每根柱代表 1 天，点击图表可查看日期与用量"; case .weekly: return "每根柱代表 1 个自然周"; case .cumulative: return "折线表示历史记录累计到该日期的 Token 数" }
+        switch period { case .daily: return "每根柱代表1天，点击图表可查看日期与用量"; case .weekly: return "每根柱代表1个自然周"; case .cumulative: return "折线表示历史记录累计到该日期的 Token 数" }
     }
     private func dateLabel(_ date: Date) -> String {
         let value = date.formatted(.dateTime.month().day())
@@ -276,7 +287,7 @@ private struct TokenHistoryView: View {
     }
     private func periodButton(_ title: String, _ value: TokenUsagePeriod) -> some View {
         Button { setPeriod(value) } label: {
-            Text(title).font(.subheadline.bold()).frame(maxWidth: .infinity).frame(height: 27).contentShape(Rectangle())
+            Text(title).font(.subheadline.bold()).frame(maxWidth: .infinity).frame(height: 23).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(period == value ? Color.primary.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -306,16 +317,22 @@ private struct TokenHistoryView: View {
 
 private struct TrackpadSwipeHandler: NSViewRepresentable {
     let onSwipe: (Int) -> Void
+    let onGestureBoundary: () -> Void
 
     func makeNSView(context: Context) -> SwipeTrackingView {
         let view = SwipeTrackingView()
         view.onSwipe = onSwipe
+        view.onGestureBoundary = onGestureBoundary
         return view
     }
-    func updateNSView(_ view: SwipeTrackingView, context: Context) { view.onSwipe = onSwipe }
+    func updateNSView(_ view: SwipeTrackingView, context: Context) {
+        view.onSwipe = onSwipe
+        view.onGestureBoundary = onGestureBoundary
+    }
 
     final class SwipeTrackingView: NSView {
         var onSwipe: ((Int) -> Void)?
+        var onGestureBoundary: (() -> Void)?
         private var horizontalDelta: CGFloat = 0
         private var didSwitchPeriod = false
         private var eventMonitor: Any?
@@ -334,6 +351,11 @@ private struct TrackpadSwipeHandler: NSViewRepresentable {
         }
         private func handleScroll(_ event: NSEvent) {
             guard event.window === window, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+            if event.phase == .began {
+                horizontalDelta = 0
+                didSwitchPeriod = false
+                onGestureBoundary?()
+            }
             if !didSwitchPeriod {
                 horizontalDelta += event.scrollingDeltaX
             }
@@ -345,6 +367,7 @@ private struct TrackpadSwipeHandler: NSViewRepresentable {
             if event.phase == .ended || event.phase == .cancelled {
                 horizontalDelta = 0
                 didSwitchPeriod = false
+                onGestureBoundary?()
             }
         }
     }
@@ -403,7 +426,7 @@ private struct QuotaRow: View {
     private func countdown(_ interval: TimeInterval) -> String {
         guard interval > 0 else { return "即将重置" }
         let seconds = Int(interval), days = seconds / 86_400, hours = seconds / 3_600 % 24, minutes = seconds / 60 % 60
-        return days > 0 ? "\(days) 天 \(hours) 小时 \(minutes) 分" : "\(hours) 小时 \(minutes) 分"
+        return days > 0 ? "\(days)天\(hours)小时\(minutes)分" : "\(hours)小时\(minutes)分"
     }
 }
 

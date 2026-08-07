@@ -102,6 +102,24 @@ enum TokenUsageSeries {
             return dated.map { date, tokens in total += tokens; return TokenUsagePoint(date: date, tokens: total) }
         }
     }
+
+    static func gridDates(from points: [TokenUsagePoint], period: TokenUsagePeriod) -> [Date] {
+        let calendar = Calendar(identifier: .iso8601)
+        guard let first = points.first?.date, let last = points.last?.date else { return [] }
+        switch period {
+        case .daily:
+            return points.map(\.date)
+        case .weekly:
+            let start = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: first))!
+            let end = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: last))!
+            return stride(from: start, through: end, by: 7 * 86_400).map { $0 }
+        case .cumulative:
+            let days = calendar.dateComponents([.day], from: first, to: last).day ?? 0
+            var dates = stride(from: 0, through: days, by: 7).compactMap { calendar.date(byAdding: .day, value: $0, to: first) }
+            if dates.last != last { dates.append(last) }
+            return dates
+        }
+    }
 }
 
 struct QuotaWindow: Codable, Identifiable, Sendable {

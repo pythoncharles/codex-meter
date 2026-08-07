@@ -33,6 +33,11 @@ assert(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .weekly).
 assert(TokenUsageSeries.points(from: usage.dailyUsageBuckets!, period: .cumulative).map(\.tokens) == [100, 150])
 assert(TokenUsagePeriod.daily.shifted(by: 1) == .weekly)
 assert(TokenUsagePeriod.daily.shifted(by: -1) == .cumulative)
+let gridStart = Calendar(identifier: .iso8601).date(from: DateComponents(year: 2026, month: 7, day: 6))!
+let gridEnd = Calendar(identifier: .iso8601).date(byAdding: .day, value: 28, to: gridStart)!
+let gridPoints = [TokenUsagePoint(date: gridStart, tokens: 1), TokenUsagePoint(date: gridEnd, tokens: 2)]
+assert(TokenUsageSeries.gridDates(from: gridPoints, period: .weekly).count == 5)
+assert(TokenUsageSeries.gridDates(from: gridPoints, period: .cumulative).count == 5)
 let located = try CodexBinaryLocator().locate()
 assert(FileManager.default.isExecutableFile(atPath: located.url.path))
 print("JSONL、7 天额度映射、Token 历史聚合、剩余百分比边界：PASS")
