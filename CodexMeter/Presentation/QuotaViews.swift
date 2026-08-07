@@ -533,7 +533,7 @@ private struct QuotaRow: View {
                         .font(.subheadline).foregroundStyle(panelSecondary)
                 }
                 Spacer()
-                UsageRing(usedPercent: window.usedPercent, color: progressColor)
+                LiquidQuota(remainingPercent: window.remainingPercent, color: progressColor)
             }
             .padding(.bottom, 5)
             GeometryReader { geometry in
@@ -572,23 +572,57 @@ private struct QuotaRow: View {
     }
 }
 
-private struct UsageRing: View {
-    let usedPercent: Double
+private struct LiquidQuota: View {
+    let remainingPercent: Double
     let color: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        ZStack {
-            Circle().stroke(.primary.opacity(0.1), lineWidth: 8)
-            Circle().trim(from: 0, to: min(1, max(0, usedPercent / 100)))
-                .stroke(color.gradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            VStack(spacing: 1) {
-                Text(appText("已用", "Used")).font(.caption2).foregroundStyle(panelSecondary)
-                Text("\(usedPercent, specifier: "%.0f")%").font(.title3.bold())
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            let phase = reduceMotion ? 0 : CGFloat(timeline.date.timeIntervalSinceReferenceDate * 1.6)
+            ZStack {
+                Circle().fill(.primary.opacity(0.08))
+                ZStack {
+                    WaveShape(fillFraction: remainingPercent / 100, phase: phase, amplitude: 4)
+                        .fill(color.opacity(0.7).gradient)
+                    WaveShape(fillFraction: remainingPercent / 100, phase: -phase * 0.8 + .pi, amplitude: 3)
+                        .fill(color.opacity(0.35).gradient)
+                }
+                .clipShape(Circle())
+                VStack(spacing: 1) {
+                    Text(appText("剩余", "Remaining")).font(.caption2).foregroundStyle(panelSecondary)
+                    Text("\(remainingPercent, specifier: "%.0f")%").font(.title3.bold())
+                }
             }
+            .overlay { Circle().stroke(.primary.opacity(0.16), lineWidth: 1) }
         }
         .aspectRatio(1, contentMode: .fit)
         .frame(width: 104, height: 104)
         .fixedSize()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(appText("剩余额度", "Remaining quota"))
+        .accessibilityValue("\(remainingPercent, specifier: "%.0f")%")
+    }
+}
+
+private struct WaveShape: Shape {
+    let fillFraction: Double
+    let phase: CGFloat
+    let amplitude: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        guard fillFraction > 0 else { return Path() }
+        let waterline = rect.maxY - rect.height * min(1, fillFraction)
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        for x in stride(from: rect.minX, through: rect.maxX + 2, by: 2) {
+            let angle = (x - rect.minX) / rect.width * .pi * 2 + phase
+            path.addLine(to: CGPoint(x: x, y: waterline + sin(angle) * amplitude))
+        }
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 
