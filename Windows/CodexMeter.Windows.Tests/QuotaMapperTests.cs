@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CodexMeter.Windows.Models;
 using CodexMeter.Windows.Services;
+using Xunit;
 
 namespace CodexMeter.Windows.Tests;
 
