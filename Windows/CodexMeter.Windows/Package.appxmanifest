@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" IgnorableNamespaces="uap">
+  <Identity Name="CodexMeter.Windows" Publisher="CN=CodexMeter" Version="0.1.0.0" />
+  <Properties>
+    <DisplayName>Codex Meter</DisplayName>
+    <PublisherDisplayName>Codex Meter</PublisherDisplayName>
+    <Logo>Assets\AppIcon.png</Logo>
+  </Properties>
+  <Resources>
+    <Resource Language="zh-CN" />
+  </Resources>
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements DisplayName="Codex Meter" Description="Codex 额度概览" BackgroundColor="transparent" Square150x150Logo="Assets\AppIcon.png" Square44x44Logo="Assets\AppIcon.png" />
+    </Application>
+  </Applications>
+  <Capabilities>
+    <Capability Name="internetClient" />
+  </Capabilities>
+</Package>

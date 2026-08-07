@@ -49,6 +49,12 @@ API Key 认证没有 ChatGPT 的 5 小时/周额度，应用会提示当前认�
 xcode-select --install
 ```
 
+## Windows 版本
+
+Windows 客户端位于 `Windows/CodexMeter.Windows/`，使用 .NET 8 + WinUI 3，与 macOS SwiftUI 工程完全独立。它同样通过本机 `codex app-server` 读取额度，并会自动定位 `codex.exe`，也支持手动填写路径。
+
+Windows 的 `.msix` 安装包由 GitHub Actions 的 **Windows MSIX** 工作流生成。首次测试版未签名，只适合开发测试；面向普通用户发布前需要配置受信任的 Windows 代码签名证书。
+
 ## 快速开始
 
 在项目根目录执行：
