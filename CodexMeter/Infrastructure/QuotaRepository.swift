@@ -82,7 +82,7 @@ final class QuotaCache {
     func load() -> CodexQuotaSnapshot? { defaults.data(forKey: snapshotKey).flatMap { try? JSONDecoder().decode(CodexQuotaSnapshot.self, from: $0) } }
 }
 
-enum RefreshInterval: Int, CaseIterable { case seconds30 = 30, seconds60 = 60, seconds300 = 300, seconds900 = 900, manual = 0 }
+enum RefreshInterval: Int, CaseIterable { case seconds30 = 30, seconds60 = 60, seconds120 = 120, seconds300 = 300, seconds360 = 360, seconds600 = 600, seconds900 = 900, manual = 0 }
 
 @MainActor final class AppSettings: ObservableObject {
     @Published var autoRefresh = UserDefaults.standard.object(forKey: "autoRefresh") as? Bool ?? true { didSet { UserDefaults.standard.set(autoRefresh, forKey: "autoRefresh") } }

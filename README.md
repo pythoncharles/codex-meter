@@ -81,7 +81,7 @@ open .build/CodexMeter.app
 3. 选择“显示或隐藏浮窗”。
 4. 点击面板右上角刷新按钮可立即更新数据。
 5. 点击周额度卡片进入历史用量，再点击返回按钮恢复额度卡片。
-6. 点击齿轮按钮设置自动刷新间隔或自定义 Codex 路径。
+6. 点击齿轮按钮进入与周额度卡片同尺寸的设置卡片；可修改主题、背景透明度、自动刷新间隔和 Codex 路径，点击返回按钮恢复周额度卡片。
 
 应用会依次在以下位置查找 Codex：
 
@@ -168,7 +168,7 @@ xcodebuild test -project CodexMeter.xcodeproj -scheme CodexMeter -destination 'p
 
 ```text
 CodexMeter/
-├── CodexMeterApp.swift              菜单栏入口和设置界面
+├── CodexMeterApp.swift              菜单栏入口
 ├── Domain/Models.swift              额度、账号和 Token 历史模型
 ├── Infrastructure/                 Codex 定位、app-server 通信和缓存
 └── Presentation/                   状态管理、浮窗和图表界面

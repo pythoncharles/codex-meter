@@ -37,6 +37,10 @@ final class CodexMeterTests: XCTestCase {
         XCTAssertEqual(TokenUsagePeriod.daily.shifted(by: -1), .cumulative)
     }
 
+    func testRefreshIntervalsIncludeRequestedOptions() {
+        XCTAssertTrue(Set(RefreshInterval.allCases.map(\.rawValue)).isSuperset(of: [120, 360, 600]))
+    }
+
     func testTokenUsageGridDatesFillWeeksAndThinCumulativeDays() {
         let calendar = Calendar(identifier: .iso8601)
         let start = calendar.date(from: DateComponents(year: 2026, month: 7, day: 6))!
