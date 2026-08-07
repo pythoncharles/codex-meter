@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -13,6 +13,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../CodexMeter.Windows/CodexMeter.Windows.csproj" />
+    <Compile Include="../CodexMeter.Windows/Models/QuotaSnapshot.cs" Link="Core/QuotaSnapshot.cs" />
+    <Compile Include="../CodexMeter.Windows/Services/QuotaMapper.cs" Link="Core/QuotaMapper.cs" />
   </ItemGroup>
 </Project>
