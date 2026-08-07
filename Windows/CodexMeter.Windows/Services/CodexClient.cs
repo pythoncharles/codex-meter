@@ -34,13 +34,13 @@ public sealed class CodexClient
 
     private static async Task SendAsync<T>(Process process, string method, int id, T parameters, CancellationToken cancellationToken)
     {
-        await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { method, id, @params = parameters }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), cancellationToken);
+        await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { method, id, @params = parameters }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }).AsMemory(), cancellationToken);
         await process.StandardInput.FlushAsync(cancellationToken);
     }
 
     private static async Task SendNotificationAsync(Process process, string method, CancellationToken cancellationToken)
     {
-        await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { method }), cancellationToken);
+        await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { method }).AsMemory(), cancellationToken);
         await process.StandardInput.FlushAsync(cancellationToken);
     }
 
