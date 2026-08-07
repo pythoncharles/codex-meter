@@ -35,18 +35,22 @@ enum AppTheme: String, CaseIterable {
 
 private struct MenuBarContent: View {
     @ObservedObject var model: QuotaViewModel
-    @State private var showsAbout = false
     var body: some View {
         Button("显示或隐藏浮窗") { PanelController.shared.toggle(model: model) }
         Button("立即刷新") { model.refresh() }
         Divider()
-        Button("关于 Codex Meter") { showsAbout = true }
-        Button("退出 Codex Meter") { NSApplication.shared.terminate(nil) }
+        Button("关于Codex Meter") { presentAbout() }
+        Button("退出Codex Meter") { NSApplication.shared.terminate(nil) }
         .onAppear { model.start() }
-        .alert("关于 Codex Meter", isPresented: $showsAbout) {
-            Button("确定", role: .cancel) { }
-        } message: {
-            Text("版权所有来自王成龙制作，绿泡泡：amaowangcl")
+    }
+    private func presentAbout() {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "关于Codex Meter"
+            alert.informativeText = "版权所有来自王成龙制作，绿泡泡：amaowangcl"
+            alert.addButton(withTitle: "确定")
+            NSApplication.shared.activate(ignoringOtherApps: true)
+            alert.runModal()
         }
     }
 }

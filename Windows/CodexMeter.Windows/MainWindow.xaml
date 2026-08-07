@@ -14,7 +14,10 @@
                     <TextBlock Text="Codex Meter" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="Windows 额度概览" Opacity="0.7" />
                 </StackPanel>
-                <Button Grid.Column="1" Content="刷新" Click="Refresh_Click" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button Content="关于Codex Meter" Click="About_Click" />
+                    <Button Content="刷新" Click="Refresh_Click" />
+                </StackPanel>
             </Grid>
 
             <InfoBar IsOpen="True" Severity="Informational" Title="{Binding StatusText}" IsClosable="False" />
