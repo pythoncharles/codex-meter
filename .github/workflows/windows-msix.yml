@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - uses: microsoft/setup-msbuild@v2
       - name: Test Windows quota mapping
         run: dotnet test Windows/CodexMeter.Windows.Tests/CodexMeter.Windows.Tests.csproj --configuration Release -p:AppxPackage=false
       - name: Build MSIX
